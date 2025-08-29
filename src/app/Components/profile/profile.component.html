@@ -1,0 +1,37 @@
+<div class="profile-container" *ngIf="profile">
+  <h2>Perfil de Usuario</h2>
+  <p><strong>ID:</strong> {{ profile.id }}</p>
+  <p><strong>Username:</strong> {{ profile.username }}</p>
+
+  <button (click)="onLogout()">Cerrar Sesión</button>
+  
+  <hr>
+
+  <div class="mfa-section">
+    <h3>Autenticación de Múltiples Factores (MFA)</h3>
+    <button (click)="setupMfa()">Activar MFA</button>
+    
+    <div *ngIf="mfaSetupInfo" class="mfa-setup">
+      <h4>Paso 1: Escanea este código QR</h4>
+      <p>Usa una aplicación como Google Authenticator o Authy.</p>
+      <img [src]="mfaSetupInfo.qrCodeImageUrl" alt="QR Code para MFA">
+      <p>O introduce manualmente esta clave:</p>
+      <code>{{ mfaSetupInfo.manualEntryKey }}</code>
+
+      <hr>
+
+      <h4>Paso 2: Verifica el código</h4>
+      <form [formGroup]="mfaEnableForm" (ngSubmit)="enableMfa()">
+        <div class="form-group">
+          <label for="mfa-code">Código de 6 dígitos</label>
+          <input id="mfa-code" type="text" formControlName="code">
+        </div>
+        <button type="submit" [disabled]="mfaEnableForm.invalid">Activar y Verificar</button>
+      </form>
+    </div>
+
+    <div *ngIf="mfaMessage" class="message">
+      {{ mfaMessage }}
+    </div>
+  </div>
+</div>
