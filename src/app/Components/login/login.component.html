@@ -1,6 +1,13 @@
 <div class="login-container">
-  <h2>Iniciar Sesión</h2>
-  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+  <div *ngIf="isWaitingForApproval" class="waiting-approval">
+        <h2>Esperando Aprobación</h2>
+        <p>Tu inicio de sesión parece inusual y requiere aprobación de un administrador.</p>
+        <p>Se ha enviado una notificación. Por favor, espera...</p>
+  </div>
+  <div *ngIf="!isWaitingForApproval">
+        <h2>Iniciar Sesión</h2>
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
 
     <div *ngIf="!isMfaStep">
       <div class="form-group">
@@ -38,11 +45,13 @@
       {{ errorMessage }}
     </div>
   </form>
+  </div>
+  
 
-  <div class="register-link" style="text-align: center; margin-top: 15px;">
-  <p>
-    ¿No tienes una cuenta? 
-    <a routerLink="/register">Crear una cuenta aquí</a>
-  </p>
-</div>
+  <div *ngIf="!isWaitingForApproval" class="register-link" style="text-align: center; margin-top: 15px;">
+        <p>
+            ¿No tienes una cuenta? 
+            <a routerLink="/register">Crear una cuenta aquí</a>
+        </p>
+    </div>
 </div>

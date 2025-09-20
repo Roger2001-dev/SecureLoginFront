@@ -87,6 +87,9 @@ refreshToken(): Observable<any> {
   register(credentials: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/api/Auth/register`, credentials);
   }
+   checkApprovalStatus(id: string): Observable<{ status: string }> {
+        return this.http.get<{ status: string }>(`${this.apiUrl}/api/Auth/approval-status/${id}`);
+    }
 
   private setupInactivityCheck(): void {
     this.resetInactivityTimer();

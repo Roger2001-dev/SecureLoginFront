@@ -17,6 +17,9 @@ export class LoginComponent {
   loginForm: FormGroup;
   errorMessage: string | null = null;
   isMfaStep = false; 
+  isWaitingForApproval = false;
+  private approvalRequestId: string | null = null;
+  private pollingInterval: any;
   private usernameForMfa: string = '';
 
   constructor(
@@ -51,21 +54,26 @@ export class LoginComponent {
     };
 
     this.usernameForMfa = credentials.username; 
+    
     this.authService.login(credentials).subscribe({
       next: (response) => {
-        if (response.mfaRequired) {
-          this.isMfaStep = true;
-          this.errorMessage = null;
-          this.loginForm.get('username')?.disable();
-          this.loginForm.get('password')?.disable();
-
-          this.loginForm.get('mfaCode')?.setValidators([Validators.required, Validators.pattern('^[0-9]{6}$')]);
-          this.loginForm.get('mfaCode')?.updateValueAndValidity();
-
-        } else {
-          this.router.navigate(['/profile']);
-        }
-      },
+                if (response.approvalRequired) {
+                    this.isWaitingForApproval = true;
+                    this.approvalRequestId = response.approvalRequestId;
+                    this.errorMessage = null;
+                    this.loginForm.disable(); 
+                    this.startPollingForApproval();
+                } else if (response.mfaRequired) {
+                    this.isMfaStep = true;
+                    this.errorMessage = null;
+                    this.loginForm.get('username')?.disable();
+                    this.loginForm.get('password')?.disable();
+                    this.loginForm.get('mfaCode')?.setValidators([Validators.required, Validators.pattern('^[0-9]{6}$')]);
+                    this.loginForm.get('mfaCode')?.updateValueAndValidity();
+                } else {
+                    this.router.navigate(['/profile']);
+                }
+            },
       error: (err) => {
         this.errorMessage = 'Credenciales incorrectas.';
         console.error('Error de login:', err);
@@ -73,6 +81,41 @@ export class LoginComponent {
     });
   }
 
+  ngOnDestroy() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+        }
+    }
+  private startPollingForApproval(): void {
+        this.pollingInterval = setInterval(() => {
+            if (!this.approvalRequestId) {
+                clearInterval(this.pollingInterval);
+                return;
+            }
+
+            this.authService.checkApprovalStatus(this.approvalRequestId).subscribe({
+                next: (statusResponse) => {
+                    if (statusResponse.status === 'Approved') {
+                        clearInterval(this.pollingInterval);
+                        this.isWaitingForApproval = false;
+                        this.isMfaStep = true;
+                        this.loginForm.get('mfaCode')?.setValidators([Validators.required, Validators.pattern('^[0-9]{6}$')]);
+                        this.loginForm.get('mfaCode')?.updateValueAndValidity();
+                    } else if (statusResponse.status === 'Rejected' || statusResponse.status === 'Expired') {
+                        clearInterval(this.pollingInterval);
+                        this.isWaitingForApproval = false;
+                        this.errorMessage = 'El inicio de sesión fue rechazado o ha expirado.';
+                        this.loginForm.enable(); 
+                    }
+                },
+                error: (err) => {
+                    clearInterval(this.pollingInterval);
+                    this.errorMessage = 'Error al verificar la aprobación.';
+                    this.loginForm.enable();
+                }
+            });
+        }, 5000); 
+    }
   private verifyMfaCode(): void {
     const mfaCode = this.loginForm.value.mfaCode;
     if (mfaCode && this.usernameForMfa) {
